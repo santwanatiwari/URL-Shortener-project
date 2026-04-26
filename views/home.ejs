@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>URL Shortener</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #f4f6f9;
+        }
+
+        .main-title {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 40px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            border-radius: 12px;
+        }
+
+        table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- NAV -->
+    <%- include("nav") %>
+
+    <!-- TITLE -->
+    <h1 class="main-title">URL Shortener</h1>
+
+    <!-- FORM -->
+    <div class="card shadow p-4 mb-4">
+        <form method="POST" action="/url" class="d-flex gap-2">
+            <input 
+                type="text"
+                name="redirectURL"
+                class="form-control form-control-lg"
+                placeholder="Enter URL (https://example.com)"
+                required
+            />
+            <button type="submit" class="btn btn-primary btn-lg">
+                Generate
+            </button>
+        </form>
+    </div>
+
+    <!-- RESULT -->
+    <% if (locals.id) { %>
+        <div class="alert alert-success text-center">
+            URL Generated: 
+            <a href="/<%= id %>" target="_blank">
+                http://localhost:8001/<%= id %>
+            </a>
+        </div>
+    <% } %>
+
+    <!-- TABLE -->
+    <% if (urls && urls.length > 0) { %>
+    <div class="card shadow p-3">
+        <table class="table table-hover text-center">
+
+            <thead class="table-dark">
+                <tr>
+                    <th>S.No</th>
+                    <th>Short ID</th>
+                    <th>Redirect URL</th>
+                    <th>Clicks</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <% urls.forEach((url, index) => { %>
+                    <tr>
+                        <td><%= index + 1 %></td>
+
+                        <td>
+                            <a href="/<%= url.shortId %>" target="_blank">
+                                <%= url.shortId %>
+                            </a>
+                        </td>
+
+                        <td style="word-break: break-all;">
+                            <%= url.redirectURL %>
+                        </td>
+
+                        <td><%= url.visitHistory.length %></td>
+
+                        <td>
+                            <button 
+                                onclick="deleteURL('<%= url.shortId %>')" 
+                                class="btn btn-danger btn-sm">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+
+        </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="mt-4 text-center">
+
+        <% if (currentPage > 1) { %>
+            <a href="/?page=<%= currentPage - 1 %>" class="btn btn-outline-primary me-2">
+                Prev
+            </a>
+        <% } %>
+
+        <% for (let i = 1; i <= totalPages; i++) { %>
+            <a href="/?page=<%= i %>" 
+               class="btn <%= i === currentPage ? 'btn-primary' : 'btn-outline-primary' %> me-1">
+                <%= i %>
+            </a>
+        <% } %>
+
+        <% if (currentPage < totalPages) { %>
+            <a href="/?page=<%= currentPage + 1 %>" class="btn btn-outline-primary ms-2">
+                Next
+            </a>
+        <% } %>
+
+    </div>
+
+    <% } %>
+
+</div>
+
+<!-- DELETE SCRIPT -->
+<script>
+function deleteURL(id) {
+    if (!confirm("Are you sure you want to delete this URL?")) return;
+
+    fetch(`/url/${id}`, {
+        method: "DELETE"
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    })
+    .catch(() => alert("Error deleting URL"));
+}
+</script>
+
+</body>
+</html>
