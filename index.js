@@ -132,19 +132,19 @@ app.get("/:shortId", async (req, res) => {
 // START SERVER (FIXED)
 // ======================
 const startServer = async () => {
-  try {
-    await connectToMongoDB(process.env.MONGO_URI);
-    console.log("MongoDB connected");
+    try {
+        await connectToMongoDB(process.env.MONGO_URI);
+        console.log("MongoDB connected");
 
-    await connectRedis();
-    console.log("Redis connected");
+        await connectRedis();
 
-    app.listen(PORT, () => {
-      console.log(`Server running on ${PORT}`);
-    });
-  } catch (err) {
-    console.error("Startup error:", err);
-  }
+        app.listen(PORT, () => {
+            console.log("Server running on", PORT);
+        });
+
+    } catch (err) {
+        console.error("Startup error:", err);
+    }
 };
 
 startServer();
