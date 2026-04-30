@@ -45,7 +45,11 @@ app.set("views", path.resolve("./views"));
 // Routes
 // ======================
 app.use("/url", urlRoute);
-app.use("/", staticRoute);
+app.use("/app", staticRoute);
+
+app.get("/", (req, res) => {
+  res.send("API is working");
+});
 
 // ======================
 // Analytics
