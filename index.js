@@ -6,7 +6,7 @@ const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
 const { connectToMongoDB } = require("./connect");
-const { connectRedis } = require("./redisClient");
+const { connectRedis, redisClient } = require("./redisClient");
 
 const URL = require("./models/url");
 const urlRoute = require("./routes/url");
@@ -132,19 +132,20 @@ app.get("/:shortId", async (req, res) => {
 // START SERVER (FIXED)
 // ======================
 const startServer = async () => {
-    try {
-        await connectToMongoDB(process.env.MONGO_URI);
-        console.log("MongoDB connected");
+  try {
+    await connectToMongoDB(process.env.MONGO_URI);
+    console.log("MongoDB connected");
 
-        await connectRedis();
+    await connectRedis();
+    console.log("Redis connected");
 
-        app.listen(PORT, () => {
-            console.log("Server running on", PORT);
-        });
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log("Server running on", PORT);
+    });
 
-    } catch (err) {
-        console.error("Startup error:", err);
-    }
+  } catch (err) {
+    console.error("Startup error:", err);
+  }
 };
 
 startServer();
