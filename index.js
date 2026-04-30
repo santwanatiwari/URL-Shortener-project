@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: ".env" });
 
 const express = require("express");
 const path = require("path");
@@ -20,9 +20,13 @@ const PORT = process.env.PORT || 8001;
 // ======================
 // DB & Redis
 // ======================
-connectToMongoDB(process.env.MONGO_URL)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log("Mongo Error:", err));
+
+console.log("ENV:", process.env);
+console.log("MONGO_URI:", process.env.MONGO_URI);
+
+connectToMongoDB(process.env.MONGO_URI)
+.then(() => console.log("MongoDB connected"))
+.catch(err => console.log("Mongo Error:", err));
 
 connectRedis();
 

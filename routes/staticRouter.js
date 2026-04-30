@@ -19,6 +19,7 @@ router.get("/", async (req, res) => {
     .limit(limit);
 
   res.render("home", {
+    id: null,
     urls,
     currentPage: page,
     totalPages: Math.ceil(total / limit),

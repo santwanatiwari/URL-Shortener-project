@@ -62,7 +62,9 @@
         <div class="alert alert-success text-center">
             URL Generated: 
             <a href="/<%= id %>" target="_blank">
-                http://localhost:8001/<%= id %>
+                <a href="/<%= id %>" target="_blank">
+  <%= request.headers.host %>/<%= id %>
+</a>
             </a>
         </div>
     <% } %>
@@ -97,7 +99,7 @@
                             <%= url.redirectURL %>
                         </td>
 
-                        <td><%= url.visitHistory.length %></td>
+                        <td><%= url.visitHistory ? url.visitHistory.length : 0 %></td>
 
                         <td>
                             <button 
