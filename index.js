@@ -6,7 +6,7 @@ const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
 const { connectToMongoDB } = require("./connect");
-const { redisClient, connectRedis } = require("./redisClient");
+const { connectRedis } = require("./redisClient");
 
 const URL = require("./models/url");
 const urlRoute = require("./routes/url");
@@ -16,19 +16,6 @@ const rateLimiter = require("./middlewares/rateLimiter");
 
 const app = express();
 const PORT = process.env.PORT || 8001;
-
-// ======================
-// DB & Redis
-// ======================
-
-console.log("ENV:", process.env);
-console.log("MONGO_URI:", process.env.MONGO_URI);
-
-connectToMongoDB(process.env.MONGO_URI)
-.then(() => console.log("MongoDB connected"))
-.catch(err => console.log("Mongo Error:", err));
-
-connectRedis();
 
 // ======================
 // Middlewares
@@ -72,7 +59,8 @@ app.get("/analytics/:shortId", async (req, res) => {
       uniqueClicks: Number(uniqueClicks || 0),
       logs,
     });
-  } catch {
+  } catch (err) {
+    console.error("Analytics error:", err);
     return res.status(500).json({
       success: false,
       message: "Analytics error",
@@ -87,12 +75,12 @@ app.get("/:shortId", async (req, res) => {
   const shortId = req.params.shortId;
   let redirectURL;
 
-  // Redis
   try {
     redirectURL = await redisClient.get(shortId);
-  } catch {}
+  } catch (err) {
+    console.error("Redis GET error:", err);
+  }
 
-  // DB fallback
   if (!redirectURL) {
     try {
       const entry = await URL.findOne({ shortId });
@@ -115,8 +103,11 @@ app.get("/:shortId", async (req, res) => {
 
       try {
         await redisClient.set(shortId, redirectURL, { EX: 3600 });
-      } catch {}
-    } catch {
+      } catch (err) {
+        console.error("Redis SET error:", err);
+      }
+    } catch (err) {
+      console.error("DB error:", err);
       return res.status(503).json({
         success: false,
         message: "Service unavailable",
@@ -124,7 +115,6 @@ app.get("/:shortId", async (req, res) => {
     }
   }
 
-  // Analytics
   try {
     await redisClient.incr(`click:${shortId}`);
   } catch {}
@@ -139,4 +129,22 @@ app.get("/:shortId", async (req, res) => {
 });
 
 // ======================
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+// START SERVER (FIXED)
+// ======================
+const startServer = async () => {
+  try {
+    await connectToMongoDB(process.env.MONGO_URI);
+    console.log("MongoDB connected");
+
+    await connectRedis();
+    console.log("Redis connected");
+
+    app.listen(PORT, () => {
+      console.log(`Server running on ${PORT}`);
+    });
+  } catch (err) {
+    console.error("Startup error:", err);
+  }
+};
+
+startServer();

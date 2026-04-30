@@ -60,11 +60,9 @@
     <!-- RESULT -->
     <% if (locals.id) { %>
         <div class="alert alert-success text-center">
-            URL Generated: 
+            URL Generated:
             <a href="/<%= id %>" target="_blank">
-                <a href="/<%= id %>" target="_blank">
-  <%= request.headers.host %>/<%= id %>
-</a>
+                /<%= id %>
             </a>
         </div>
     <% } %>

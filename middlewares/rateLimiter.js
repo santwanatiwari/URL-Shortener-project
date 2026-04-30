@@ -1,35 +1,36 @@
 const { redisClient } = require("../redisClient");
 
 const LIMIT = 10;
-const WINDOW = 60; // 1 min
+const WINDOW = 60; // seconds
 
 async function rateLimiter(req, res, next) {
     const ip =
-        req.headers["x-forwarded-for"] ||
+        (req.headers["x-forwarded-for"] || "")
+            .split(",")[0]
+            .trim() ||
         req.socket.remoteAddress ||
         "unknown";
 
     const key = `rate:${ip}`;
 
     try {
-        const count = await redisClient.get(key);
+        const count = await redisClient.incr(key);
 
-        if (count && parseInt(count) >= LIMIT) {
+        if (count === 1) {
+            await redisClient.expire(key, WINDOW);
+        }
+
+        if (count > LIMIT) {
             return res.status(429).json({
                 success: false,
                 message: "Too many requests"
             });
         }
 
-        if (!count) {
-            await redisClient.set(key, 1, { EX: WINDOW });
-        } else {
-            await redisClient.incr(key);
-        }
-
         next();
     } catch (err) {
-        next(); // fail-safe
+        console.error("Rate limiter error:", err);
+        next();
     }
 }
 
