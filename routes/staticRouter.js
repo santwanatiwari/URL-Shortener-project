@@ -12,14 +12,16 @@ router.get("/", async (req, res) => {
     const total = await URL.countDocuments();
     const urls = await URL.find().skip(skip).limit(limit);
 
-    res.render("home", {
-      urls,
+    return res.render("home", {
+      urls: urls || [],
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+      id: null
     });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server error");
+    console.error("/app ERROR:", err);
+    return res.status(500).send("Internal Server Error");
   }
 });
 module.exports = router;
