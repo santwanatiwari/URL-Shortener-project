@@ -1,8 +1,8 @@
 const express = require("express");
 const URL = require("../models/url");
 const router = express.Router();
+const { redisClient } = require("../redisClient"); 
 
-// Signup page
 router.get("/", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -12,10 +12,21 @@ router.get("/", async (req, res) => {
     const total = await URL.countDocuments();
     const urls = await URL.find().skip(skip).limit(limit);
 
+    
+    const urlsWithClicks = await Promise.all(
+      urls.map(async (url) => {
+        const redisClicks = await redisClient.get(`click:${url.shortId}`);
+        return {
+          ...url.toObject(),
+          totalClicks: redisClicks ? Number(redisClicks) : url.totalClicks
+        };
+      })
+    );
+
     return res.render("home", {
-      urls: urls || [],
+      urls: urlsWithClicks,
       currentPage: page,
-      totalPages: Math.max(Math.ceil(total / limit), 1),
+      totalPages: Math.ceil(total / limit),
       id: null
     });
 

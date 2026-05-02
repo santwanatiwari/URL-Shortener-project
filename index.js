@@ -38,12 +38,15 @@ app.set("views", path.resolve("./views"));
 app.use("/url", urlRoute);
 app.use("/app", staticRoute);
 
+// Optional: agar UI direct "/" pe chahiye to isko enable karo
+// app.use("/", staticRoute);
+
 app.get("/", (req, res) => {
   res.send("API is working");
 });
 
 // ======================
-// Analytics
+// Analytics API
 // ======================
 app.get("/analytics/:shortId", async (req, res) => {
   const shortId = req.params.shortId;
@@ -69,20 +72,18 @@ app.get("/analytics/:shortId", async (req, res) => {
 });
 
 // ======================
-// Redirect (LAST)
+// Redirect (IMPORTANT)
 // ======================
 app.get("/:shortId", async (req, res) => {
   const shortId = req.params.shortId;
   let redirectURL;
 
   try {
+    // 🔹 Redis se check
     redirectURL = await redisClient.get(shortId);
-  } catch (err) {
-    console.error("Redis GET error:", err);
-  }
 
-  if (!redirectURL) {
-    try {
+    // 🔹 Agar Redis me nahi mila to DB se lao
+    if (!redirectURL) {
       const entry = await URL.findOne({ shortId });
 
       if (!entry) {
@@ -101,35 +102,48 @@ app.get("/:shortId", async (req, res) => {
 
       redirectURL = entry.redirectURL;
 
-      try {
-        await redisClient.set(shortId, redirectURL, { EX: 3600 });
-      } catch (err) {
-        console.error("Redis SET error:", err);
-      }
-    } catch (err) {
-      console.error("DB error:", err);
-      return res.status(503).json({
-        success: false,
-        message: "Service unavailable",
-      });
+      // Redis me cache karo
+      await redisClient.set(shortId, redirectURL, { EX: 3600 });
     }
+
+    // ======================
+    // Analytics (FIXED)
+    // ======================
+    try {
+      // Redis count
+      await redisClient.incr(`click:${shortId}`);
+
+      // MongoDB permanent count
+      await URL.updateOne(
+        { shortId },
+        { $inc: { totalClicks: 1 } }
+      );
+
+    } catch (err) {
+      console.log("Analytics error:", err);
+    }
+
+    // Optional: detailed logs
+    Analytics.create({
+      shortId,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    }).catch(() => {});
+
+    // FINAL REDIRECT (always)
+    return res.redirect(redirectURL);
+
+  } catch (err) {
+    console.error("Redirect error:", err);
+    return res.status(503).json({
+      success: false,
+      message: "Service unavailable",
+    });
   }
-
-  try {
-    await redisClient.incr(`click:${shortId}`);
-  } catch {}
-
-  Analytics.create({
-    shortId,
-    ip: req.ip,
-    userAgent: req.headers["user-agent"],
-  }).catch(() => {});
-
-  return res.redirect(redirectURL);
 });
 
 // ======================
-// START SERVER (FIXED)
+// START SERVER
 // ======================
 const startServer = async () => {
   try {
