@@ -38,8 +38,12 @@
     <!-- RESULT -->
     <% if (id) { %>
         <div class="alert alert-success text-center">
-            <a href="/<%= id %>" target="_blank"><%= requestHost %>/<%= id %></a>
-            <button onclick="copyURL('<%= id %>')" class="btn btn-sm btn-success ms-2">Copy</button>
+            <a href="/<%= id %>" target="_blank">
+                <%= requestHost %>/<%= id %>
+            </a>
+            <button onclick="copyURL('<%= id %>')" class="btn btn-sm btn-success ms-2">
+                Copy
+            </button>
         </div>
     <% } %>
 
@@ -47,50 +51,81 @@
     <input type="text" id="searchInput" class="form-control mb-3" placeholder="Search..." onkeyup="searchTable()">
 
     <!-- TABLE -->
-    <% if (urls.length > 0) { %>
-    <table class="table table-bordered text-center">
+    <% if (urls && urls.length > 0) { %>
+    <div class="card p-3">
+        <table class="table table-bordered text-center">
 
-        <thead class="table-dark">
-            <tr>
-                <th>#</th>
-                <th>Short</th>
-                <th>URL</th>
-                <th>Clicks</th>
-                <th>Action</th>
-            </tr>
-        </thead>
+            <thead class="table-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Short</th>
+                    <th>URL</th>
+                    <th>Clicks</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
 
-        <tbody>
-            <% urls.forEach((url, index) => { %>
-            <tr>
-                <td><%= index + 1 %></td>
+            <tbody>
+                <% urls.forEach((url, index) => { %>
+                <tr>
+                    <!-- 🔥 FIXED SERIAL NUMBER -->
+                    <td><%= (currentPage - 1) * 5 + index + 1 %></td>
 
-                <td>
-                    <a href="/<%= url.shortId %>" target="_blank">
-                        <%= url.shortId %>
-                    </a>
-                </td>
+                    <td>
+                        <a href="/<%= url.shortId %>" target="_blank">
+                            <%= url.shortId %>
+                        </a>
+                    </td>
 
-                <td><%= url.redirectURL %></td>
+                    <td style="word-break: break-all;">
+                        <%= url.redirectURL %>
+                    </td>
 
-                <td><%= url.totalClicks %></td>
+                    <td><%= url.totalClicks %></td>
 
-                <td>
-                    <button class="btn btn-warning btn-sm"
-                        onclick="editURL('<%= url.shortId %>', '<%= url.redirectURL %>')">
-                        Edit
-                    </button>
+                    <td>
+                        <button class="btn btn-warning btn-sm"
+                            onclick="editURL('<%= url.shortId %>', '<%= url.redirectURL %>')">
+                            Edit
+                        </button>
 
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deleteURL('<%= url.shortId %>')">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-            <% }) %>
-        </tbody>
+                        <button class="btn btn-danger btn-sm"
+                            onclick="deleteURL('<%= url.shortId %>')">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                <% }) %>
+            </tbody>
 
-    </table>
+        </table>
+    </div>
+    <% } %>
+
+    <!-- 🔥 PAGINATION FIX (ALWAYS OUTSIDE TABLE) -->
+    <% if (totalPages && totalPages > 1) { %>
+    <div class="mt-4 text-center">
+
+        <% if (currentPage > 1) { %>
+            <a href="/app?page=<%= currentPage - 1 %>" class="btn btn-outline-primary me-2">
+                Prev
+            </a>
+        <% } %>
+
+        <% for (let i = 1; i <= totalPages; i++) { %>
+            <a href="/app?page=<%= i %>" 
+               class="btn <%= i === currentPage ? 'btn-primary' : 'btn-outline-primary' %> me-1">
+                <%= i %>
+            </a>
+        <% } %>
+
+        <% if (currentPage < totalPages) { %>
+            <a href="/app?page=<%= currentPage + 1 %>" class="btn btn-outline-primary ms-2">
+                Next
+            </a>
+        <% } %>
+
+    </div>
     <% } %>
 
 </div>
@@ -102,6 +137,7 @@
 
       <div class="modal-header">
         <h5>Edit URL</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
       <div class="modal-body">
@@ -140,7 +176,6 @@ function searchTable() {
 function editURL(id, url) {
     document.getElementById("editId").value = id;
     document.getElementById("editInput").value = url;
-
     new bootstrap.Modal(document.getElementById("editModal")).show();
 }
 
