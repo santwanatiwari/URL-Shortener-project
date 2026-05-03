@@ -117,20 +117,20 @@
     <div class="mt-4 text-center">
 
         <% if (currentPage > 1) { %>
-            <a href="/?page=<%= currentPage - 1 %>" class="btn btn-outline-primary me-2">
+            <a href="/app?page=<%= currentPage - 1 %>" class="btn btn-outline-primary me-2">
                 Prev
             </a>
         <% } %>
 
         <% for (let i = 1; i <= totalPages; i++) { %>
-            <a href="/?page=<%= i %>" 
+            <a href="/app?page=<%= i %>" 
                class="btn <%= i === currentPage ? 'btn-primary' : 'btn-outline-primary' %> me-1">
                 <%= i %>
             </a>
         <% } %>
 
         <% if (currentPage < totalPages) { %>
-            <a href="/?page=<%= currentPage + 1 %>" class="btn btn-outline-primary ms-2">
+            <a href="/app?page=<%= currentPage + 1 %>" class="btn btn-outline-primary ms-2">
                 Next
             </a>
         <% } %>

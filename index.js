@@ -79,10 +79,10 @@ app.get("/:shortId", async (req, res) => {
   let redirectURL;
 
   try {
-    // 🔹 Redis se check
+    //   Redis se check
     redirectURL = await redisClient.get(shortId);
 
-    // 🔹 Agar Redis me nahi mila to DB se lao
+    //  Agar Redis me nahi mila to DB se lao
     if (!redirectURL) {
       const entry = await URL.findOne({ shortId });
 
