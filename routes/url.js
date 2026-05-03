@@ -2,7 +2,7 @@ const express = require("express");
 const {
   handleGenerateNewShortURL,
   handleGetAnalytics,
-  handleDeleteURL
+  handleDeleteURL, handleUpdateURL
 } = require("../controllers/url");
 
 const router = express.Router();
@@ -15,5 +15,8 @@ router.get("/analytics/:shortId", handleGetAnalytics);
 
 // Delete URL (Mongo + Redis cleanup)
 router.delete("/:shortId", handleDeleteURL);
+
+// Update URL
+router.patch("/:shortId", handleUpdateURL);
 
 module.exports = router;

@@ -5,156 +5,155 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>URL Shortener</title>
 
-    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        body {
-            background: #f4f6f9;
-        }
-
-        .main-title {
-            text-align: center;
-            font-weight: bold;
-            margin-top: 40px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            border-radius: 12px;
-        }
-
-        table {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-    </style>
 </head>
 
-<body>
+<body class="bg-light">
 
-<div class="container">
+<div class="container mt-4">
 
-    <!-- NAV -->
     <%- include("./nav.ejs") %>
 
-    <!-- TITLE -->
-    <h1 class="main-title">URL Shortener</h1>
+    <h2 class="text-center mb-4">URL Shortener</h2>
 
     <!-- FORM -->
-    <div class="card shadow p-4 mb-4">
-        <form method="POST" action="/url" class="d-flex gap-2">
-            <input 
-                type="text"
-                name="redirectURL"
-                class="form-control form-control-lg"
-                placeholder="Enter URL (https://example.com)"
-                required
-            />
-            <button type="submit" class="btn btn-primary btn-lg">
-                Generate
-            </button>
+    <div class="card p-3 mb-4">
+        <form method="POST" action="/url" class="row g-2">
+
+            <div class="col-md-6">
+                <input type="text" name="redirectURL" class="form-control" placeholder="Enter URL" required>
+            </div>
+
+            <div class="col-md-4">
+                <input type="text" name="customId" class="form-control" placeholder="Custom ID (optional)">
+            </div>
+
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100">Generate</button>
+            </div>
+
         </form>
     </div>
 
     <!-- RESULT -->
-    <% if (locals.id) { %>
+    <% if (id) { %>
         <div class="alert alert-success text-center">
-            URL Generated:
-            <a href="/<%= id %>" target="_blank">
-                /<%= id %>
-            </a>
+            <a href="/<%= id %>" target="_blank"><%= requestHost %>/<%= id %></a>
+            <button onclick="copyURL('<%= id %>')" class="btn btn-sm btn-success ms-2">Copy</button>
         </div>
     <% } %>
 
+    <!-- SEARCH -->
+    <input type="text" id="searchInput" class="form-control mb-3" placeholder="Search..." onkeyup="searchTable()">
+
     <!-- TABLE -->
-    <% if (urls && urls.length > 0) { %>
-    <div class="card shadow p-3">
-        <table class="table table-hover text-center">
+    <% if (urls.length > 0) { %>
+    <table class="table table-bordered text-center">
 
-            <thead class="table-dark">
-                <tr>
-                    <th>S.No</th>
-                    <th>Short ID</th>
-                    <th>Redirect URL</th>
-                    <th>Clicks</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Short</th>
+                <th>URL</th>
+                <th>Clicks</th>
+                <th>Action</th>
+            </tr>
+        </thead>
 
-            <tbody>
-                <% urls.forEach((url, index) => { %>
-                    <tr>
-                        <td><%= index + 1 %></td>
+        <tbody>
+            <% urls.forEach((url, index) => { %>
+            <tr>
+                <td><%= index + 1 %></td>
 
-                        <td>
-                            <a href="/<%= url.shortId %>" target="_blank">
-                                <%= url.shortId %>
-                            </a>
-                        </td>
+                <td>
+                    <a href="/<%= url.shortId %>" target="_blank">
+                        <%= url.shortId %>
+                    </a>
+                </td>
 
-                        <td style="word-break: break-all;">
-                            <%= url.redirectURL %>
-                        </td>
+                <td><%= url.redirectURL %></td>
 
-                        <td><%= url.totalClicks %></td>
+                <td><%= url.totalClicks %></td>
 
-                        <td>
-                            <button 
-                                onclick="deleteURL('<%= url.shortId %>')" 
-                                class="btn btn-danger btn-sm">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                <% }) %>
-            </tbody>
+                <td>
+                    <button class="btn btn-warning btn-sm"
+                        onclick="editURL('<%= url.shortId %>', '<%= url.redirectURL %>')">
+                        Edit
+                    </button>
 
-        </table>
-    </div>
+                    <button class="btn btn-danger btn-sm"
+                        onclick="deleteURL('<%= url.shortId %>')">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            <% }) %>
+        </tbody>
 
-    <!-- PAGINATION -->
-    <div class="mt-4 text-center">
-
-        <% if (currentPage > 1) { %>
-            <a href="/app?page=<%= currentPage - 1 %>" class="btn btn-outline-primary me-2">
-                Prev
-            </a>
-        <% } %>
-
-        <% for (let i = 1; i <= totalPages; i++) { %>
-            <a href="/app?page=<%= i %>" 
-               class="btn <%= i === currentPage ? 'btn-primary' : 'btn-outline-primary' %> me-1">
-                <%= i %>
-            </a>
-        <% } %>
-
-        <% if (currentPage < totalPages) { %>
-            <a href="/app?page=<%= currentPage + 1 %>" class="btn btn-outline-primary ms-2">
-                Next
-            </a>
-        <% } %>
-
-    </div>
-
+    </table>
     <% } %>
 
 </div>
 
-<!-- DELETE SCRIPT -->
+<!-- EDIT MODAL -->
+<div class="modal fade" id="editModal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5>Edit URL</h5>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <input type="text" id="editInput" class="form-control">
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="updateURL()">Save</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+function copyURL(id) {
+    navigator.clipboard.writeText(window.location.origin + "/" + id);
+    alert("Copied!");
+}
+
 function deleteURL(id) {
-    if (!confirm("Are you sure you want to delete this URL?")) return;
+    fetch(`/url/${id}`, { method: "DELETE" })
+    .then(() => location.reload());
+}
+
+function searchTable() {
+    let input = document.getElementById("searchInput").value.toLowerCase();
+    document.querySelectorAll("tbody tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+    });
+}
+
+function editURL(id, url) {
+    document.getElementById("editId").value = id;
+    document.getElementById("editInput").value = url;
+
+    new bootstrap.Modal(document.getElementById("editModal")).show();
+}
+
+function updateURL() {
+    const id = document.getElementById("editId").value;
+    const url = document.getElementById("editInput").value;
 
     fetch(`/url/${id}`, {
-        method: "DELETE"
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ redirectURL: url })
     })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-        location.reload();
-    })
-    .catch(() => alert("Error deleting URL"));
+    .then(() => location.reload());
 }
 </script>
 

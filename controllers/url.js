@@ -2,6 +2,9 @@ const shortid = require("shortid");
 const UrlModel = require("../models/url");
 const { redisClient } = require("../redisClient");
 
+// ======================
+// CREATE SHORT URL
+// ======================
 async function handleGenerateNewShortURL(req, res) {
   try {
     const { redirectURL, customId } = req.body;
@@ -9,7 +12,7 @@ async function handleGenerateNewShortURL(req, res) {
     if (!redirectURL) {
       return res.status(400).json({
         success: false,
-        message: "URL is required"
+        message: "URL is required",
       });
     }
 
@@ -19,40 +22,39 @@ async function handleGenerateNewShortURL(req, res) {
     } catch {
       return res.status(400).json({
         success: false,
-        message: "Invalid URL"
+        message: "Invalid URL",
       });
     }
 
     const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     let finalShortId;
+    let usedCustom = false;
 
     // =========================
-    //  CUSTOM ID LOGIC (FIXED)
+    //  CUSTOM ID CASE
     // =========================
     if (customId && customId.trim() !== "") {
-
-      // optional validation
       if (!/^[a-zA-Z0-9_-]+$/.test(customId)) {
         return res.status(400).json({
           success: false,
-          message: "Invalid custom ID"
+          message: "Invalid custom ID",
         });
       }
 
       const exists = await UrlModel.findOne({ shortId: customId });
 
       if (!exists) {
-        // ✔ available → use custom
         finalShortId = customId;
+        usedCustom = true;
       } else {
-        //  taken → fallback to auto
+        // fallback
         finalShortId = shortid.generate();
       }
 
     } else {
       // =========================
-      //  SAME URL CHECK (ONLY for auto)
+      //  SAME URL REUSE (OLD LOGIC)
       // =========================
       const existingURL = await UrlModel.findOne({ redirectURL });
 
@@ -60,7 +62,7 @@ async function handleGenerateNewShortURL(req, res) {
         return res.json({
           success: true,
           shortId: existingURL.shortId,
-          message: "URL already exists"
+          message: "URL already exists",
         });
       }
 
@@ -79,26 +81,33 @@ async function handleGenerateNewShortURL(req, res) {
       expiresAt: expiryDate,
     });
 
+    // Redis cache
+    try {
+      await redisClient.set(finalShortId, redirectURL, { EX: 3600 });
+    } catch {}
+
     return res.json({
       success: true,
       shortId: finalShortId,
-      message:
-        finalShortId === customId
-          ? "Custom short URL created"
-          : customId
-          ? "Custom ID taken → auto-generated used"
-          : "Short URL created"
+      message: usedCustom
+        ? "Custom short URL created"
+        : customId
+        ? "Custom ID taken → auto-generated used"
+        : "Short URL created",
     });
 
   } catch (err) {
     console.error("Create URL error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error",
     });
   }
 }
 
+// ======================
+// ANALYTICS
+// ======================
 async function handleGetAnalytics(req, res) {
   try {
     const shortId = req.params.shortId;
@@ -108,7 +117,7 @@ async function handleGetAnalytics(req, res) {
     if (!result) {
       return res.status(404).json({
         success: false,
-        message: "Short URL not found"
+        message: "Short URL not found",
       });
     }
 
@@ -120,11 +129,14 @@ async function handleGetAnalytics(req, res) {
   } catch {
     return res.status(500).json({
       success: false,
-      message: "Analytics error"
+      message: "Analytics error",
     });
   }
 }
 
+// ======================
+// DELETE URL
+// ======================
 async function handleDeleteURL(req, res) {
   try {
     const shortId = req.params.shortId;
@@ -134,7 +146,7 @@ async function handleDeleteURL(req, res) {
     if (!deleted) {
       return res.status(404).json({
         success: false,
-        message: "URL not found"
+        message: "URL not found",
       });
     }
 
@@ -147,19 +159,59 @@ async function handleDeleteURL(req, res) {
 
     return res.json({
       success: true,
-      message: "URL deleted"
+      message: "URL deleted",
     });
 
   } catch {
     return res.status(500).json({
       success: false,
-      message: "Delete failed"
+      message: "Delete failed",
     });
   }
 }
 
+// ======================
+//  UPDATE URL (EDIT FEATURE)
+// ======================
+async function handleUpdateURL(req, res) {
+  try {
+    const { shortId } = req.params;
+    const { redirectURL } = req.body;
+
+    if (!redirectURL) {
+      return res.status(400).json({
+        success: false,
+        message: "URL is required",
+      });
+    }
+
+    await UrlModel.updateOne(
+      { shortId },
+      { redirectURL }
+    );
+
+    // update Redis cache
+    try {
+      await redisClient.set(shortId, redirectURL, { EX: 3600 });
+    } catch {}
+
+    return res.json({
+      success: true,
+      message: "URL updated successfully",
+    });
+
+  } catch {
+    return res.status(500).json({
+      success: false,
+      message: "Update failed",
+    });
+  }
+}
+
+// ======================
 module.exports = {
   handleGenerateNewShortURL,
   handleGetAnalytics,
-  handleDeleteURL
+  handleDeleteURL,
+  handleUpdateURL,
 };
