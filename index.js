@@ -38,9 +38,6 @@ app.set("views", path.resolve("./views"));
 app.use("/url", urlRoute);
 app.use("/app", staticRoute);
 
-// Optional: agar UI direct "/" pe chahiye to isko enable karo
-// app.use("/", staticRoute);
-
 app.get("/", (req, res) => {
   res.send("API is working");
 });
@@ -53,13 +50,11 @@ app.get("/analytics/:shortId", async (req, res) => {
 
   try {
     const totalClicks = await redisClient.get(`click:${shortId}`);
-    const uniqueClicks = await redisClient.get(`unique:${shortId}`);
     const logs = await Analytics.find({ shortId });
 
     return res.json({
       shortId,
       totalClicks: Number(totalClicks || 0),
-      uniqueClicks: Number(uniqueClicks || 0),
       logs,
     });
   } catch (err) {
@@ -72,32 +67,26 @@ app.get("/analytics/:shortId", async (req, res) => {
 });
 
 // ======================
-// Redirect (IMPORTANT)
+// Redirect (MAIN LOGIC)
 // ======================
 app.get("/:shortId", async (req, res) => {
   const shortId = req.params.shortId;
   let redirectURL;
 
   try {
-    //   Redis se check
+    //  Redis se URL lao
     redirectURL = await redisClient.get(shortId);
 
-    //  Agar Redis me nahi mila to DB se lao
+    //  Agar Redis me nahi hai → MongoDB se lao
     if (!redirectURL) {
       const entry = await URL.findOne({ shortId });
 
       if (!entry) {
-        return res.status(404).json({
-          success: false,
-          message: "Short URL not found",
-        });
+        return res.status(404).send("URL not found");
       }
 
       if (entry.expiresAt && entry.expiresAt < new Date()) {
-        return res.status(410).json({
-          success: false,
-          message: "Link expired",
-        });
+        return res.status(410).send("Link expired");
       }
 
       redirectURL = entry.redirectURL;
@@ -107,38 +96,47 @@ app.get("/:shortId", async (req, res) => {
     }
 
     // ======================
-    // Analytics (FIXED)
+    //  CLICK COUNT LOGIC
     // ======================
-    try {
-      // Redis count
-      await redisClient.incr(`click:${shortId}`);
 
-      // MongoDB permanent count
-      await URL.updateOne(
-        { shortId },
-        { $inc: { totalClicks: 1 } }
-      );
+    // Redis se current clicks lao
+    let currentClicks = await redisClient.get(`click:${shortId}`);
 
-    } catch (err) {
-      console.log("Analytics error:", err);
+    if (!currentClicks) {
+      const doc = await URL.findOne({ shortId });
+      currentClicks = doc ? doc.totalClicks : 0;
+    } else {
+      currentClicks = Number(currentClicks);
     }
 
-    // Optional: detailed logs
+    //  LIMIT CHECK
+    if (currentClicks >= 5) {
+      return res.status(403).send("Click limit reached (max 5)");
+    }
+
+    //  COUNT UPDATE
+    await redisClient.incr(`click:${shortId}`);
+
+    await URL.updateOne(
+      { shortId },
+      { $inc: { totalClicks: 1 } }
+    );
+
+    // ======================
+    // Analytics log
+    // ======================
     Analytics.create({
       shortId,
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     }).catch(() => {});
 
-    // FINAL REDIRECT (always)
+    //  FINAL REDIRECT
     return res.redirect(redirectURL);
 
   } catch (err) {
     console.error("Redirect error:", err);
-    return res.status(503).json({
-      success: false,
-      message: "Service unavailable",
-    });
+    return res.status(503).send("Service unavailable");
   }
 });
 

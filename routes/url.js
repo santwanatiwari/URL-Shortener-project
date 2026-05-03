@@ -7,13 +7,13 @@ const {
 
 const router = express.Router();
 
-// create short URL
+// Create short URL
 router.post("/", handleGenerateNewShortURL);
 
-// analytics
+// Analytics
 router.get("/analytics/:shortId", handleGetAnalytics);
 
-// delete
+// Delete URL (Mongo + Redis cleanup)
 router.delete("/:shortId", handleDeleteURL);
 
 module.exports = router;
